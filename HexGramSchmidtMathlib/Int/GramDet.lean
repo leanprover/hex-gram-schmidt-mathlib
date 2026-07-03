@@ -30,22 +30,6 @@ namespace Hex
 namespace GramSchmidt
 namespace Int
 
-/-- Bareiss agrees with the Leibniz determinant on the Cramer matrix used by
-the scaled-coefficient formula. -/
-private theorem scaledCoeffMatrix_bareiss_eq_det
-    (b : Matrix Int n m) (i j : Nat) (hi : i < n) (hj : j < i) :
-    ((Matrix.bareiss
-        (GramSchmidt.scaledCoeffMatrix b ⟨i, hi⟩ ⟨j, Nat.lt_trans hj hi⟩ hj) :
-          Int) : Rat) =
-      ((Matrix.det
-        (GramSchmidt.scaledCoeffMatrix b ⟨i, hi⟩ ⟨j, Nat.lt_trans hj hi⟩ hj) :
-          Int) : Rat) :=
-  by exact_mod_cast
-    (HexMatrixMathlib.bareiss_eq_mathlib_det
-        (GramSchmidt.scaledCoeffMatrix b ⟨i, hi⟩ ⟨j, Nat.lt_trans hj hi⟩ hj)).trans
-      (HexMatrixMathlib.det_eq
-        (GramSchmidt.scaledCoeffMatrix b ⟨i, hi⟩ ⟨j, Nat.lt_trans hj hi⟩ hj)).symm
-
 /-- Leading integer Gram determinants are nonnegative. -/
 theorem leadingGramMatrixInt_det_nonneg
     (b : Matrix Int n m) (t : Nat) (ht : t ≤ n) :
@@ -142,6 +126,7 @@ private theorem detProduct_intCast {k : Nat}
     ((Matrix.detProduct M perm : Int) : Rat) =
       Matrix.detProduct (castIntDetMatrix M) perm := by
   unfold Matrix.detProduct
+  simp only [Fin.foldl_eq_finRange_foldl]
   rw [foldl_intCast_mul_aux (xs := List.finRange k)
     (f := fun i => M[(i, perm[i])]) (acc := 1)]
   rw [show ((1 : Int) : Rat) = (1 : Rat) from rfl]
@@ -300,6 +285,7 @@ private theorem dot_prefixCombination_right_rat
               u.dotProduct
                 (basisM.row ⟨j.val, Nat.lt_trans j.isLt hi⟩)) 0 := by
   unfold GramSchmidt.prefixCombination
+  rw [Fin.foldl_eq_finRange_foldl]
   have hgen :
       ∀ (xs : List (Fin i)) (acc : Vector Rat m),
         u.dotProduct
@@ -591,6 +577,7 @@ private theorem auxMatrix_det_eq_prod_normSq (b : Matrix Int n m)
   rw [Matrix.det_lowerTriangular_eq_foldl_diag (auxMatrix b k hk)
     (fun i j hij => auxMatrix_zero_above b k hk i j hij)]
   unfold gramSchmidtNormProduct
+  rw [Fin.foldl_eq_finRange_foldl]
   -- Both foldls are over `List.finRange k`. The diagonal of auxMatrix at i
   -- equals of.normSq (basis b) row at the lifted index.
   apply foldl_mul_congr_simple
@@ -900,6 +887,7 @@ private theorem scaledCoeffMatrix_replacementColumn_solve
   rw [hsys]
   unfold Matrix.mulVec Matrix.row
   simp only [Vector.getElem_ofFn, Fin.getElem_fin]
+  rw [Vector.dotProduct]
   change
     (List.finRange (j + 1)).foldl
       (fun acc q =>
@@ -1019,7 +1007,7 @@ theorem gramDet_pos (b : Matrix Int n m)
 
 /-- One-step extension of `gramSchmidtNormProduct`: appending the `k`-th
 factor multiplies the `k`-fold product by `((basis b).row ⟨k, _⟩)`..normSq
-This is a `List.finRange` cancellation lemma; positivity of the leading Gram
+This is a `Fin.foldl` cancellation lemma; positivity of the leading Gram
 determinant is handled separately by `gramDet_pos`. -/
 theorem gramSchmidtNormProduct_succ (b : Matrix Int n m)
     (k : Nat) (hk : k + 1 ≤ n) :
@@ -1027,7 +1015,8 @@ theorem gramSchmidtNormProduct_succ (b : Matrix Int n m)
       gramSchmidtNormProduct b k (Nat.le_of_succ_le hk) *
         ((basis b).row ⟨k, Nat.lt_of_succ_le hk⟩).normSq := by
   unfold gramSchmidtNormProduct
-  rw [List.finRange_succ_last, List.foldl_append, List.foldl_map]
+  rw [Fin.foldl_eq_finRange_foldl, Fin.foldl_eq_finRange_foldl,
+    List.finRange_succ_last, List.foldl_append, List.foldl_map]
   simp only [List.foldl_cons, List.foldl_nil]
   rfl
 
@@ -1184,44 +1173,6 @@ private theorem dot_castIntRow_castIntRow_eq
       rw [dot_castIntRow_basis_eq_zero_of_lt b p r hp hrn hpr]
       grind)
     ((j + 1) + d) hkdn (Nat.le_add_right (j + 1) d)
-
-private theorem dot_basisPrefixProjection_eq_castIntGram
-    (b : Matrix Int n m) (i j : Nat) (hi : i < n) (hj : j < i)
-    (p : Fin (j + 1)) :
-    Vector.dotProduct
-        (castIntRow b
-          ⟨p.val, Nat.lt_of_lt_of_le p.isLt
-            (Nat.succ_le_of_lt (Nat.lt_trans hj hi))⟩)
-        (basisPrefixProjection b i j hi (Nat.lt_trans hj hi)) =
-      ((Vector.dotProduct
-          (b.row
-            ⟨p.val, Nat.lt_of_lt_of_le p.isLt
-              (Nat.succ_le_of_lt (Nat.lt_trans hj hi))⟩)
-          (b.row ⟨i, hi⟩) : Int) : Rat) := by
-  rw [← dot_castIntRow_eq_cast_dot b
-    (⟨p.val, Nat.lt_of_lt_of_le p.isLt
-      (Nat.succ_le_of_lt (Nat.lt_trans hj hi))⟩ : Fin n)
-    (⟨i, hi⟩ : Fin n)]
-  exact
-    (dot_castIntRow_castIntRow_eq
-      b i j p.val hi hj (Nat.le_of_lt_succ p.isLt)
-      (Nat.lt_of_lt_of_le p.isLt
-        (Nat.succ_le_of_lt (Nat.lt_trans hj hi)))).symm
-
-private theorem scaledCoeffMatrix_replacementColumn_solve_intGram
-    (b : Matrix Int n m) (i j : Nat) (hi : i < n) (hj : j < i)
-    (p : Fin (j + 1)) :
-    (castIntDetMatrix
-        (GramSchmidt.leadingGramMatrixInt b (j + 1)
-          (Nat.succ_le_of_lt (Nat.lt_trans hj hi))) *
-        originalProjectionCoords b i j hi (Nat.lt_trans hj hi))[p] =
-      ((Vector.dotProduct
-          (b.row
-            ⟨p.val, Nat.lt_of_lt_of_le p.isLt
-              (Nat.succ_le_of_lt (Nat.lt_trans hj hi))⟩)
-          (b.row ⟨i, hi⟩) : Int) : Rat) := by
-  rw [scaledCoeffMatrix_replacementColumn_solve b i j hi hj p]
-  exact dot_basisPrefixProjection_eq_castIntGram b i j hi hj p
 
 /-- Isolate the last term in a `foldl` over `List.finRange (k + 1)` when every
 earlier term vanishes. -/

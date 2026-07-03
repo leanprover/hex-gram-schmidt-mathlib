@@ -1130,28 +1130,6 @@ theorem scaledCoeffs_lower_eq_det_scaledCoeffMatrix
         scaledCoeffMatrix_det_eq_zero_of_singularStep_lt b i j hji s h_sing
       rw [h_lhs, h_det]
 
-/-- Non-singular branch of the Cramer/Bareiss identity: when the no-pivot
-Bareiss pass over the Gram matrix reaches column `j` without recording a
-singular step, the executable scaled coefficient agrees with the public
-row-pivoted Bareiss determinant of the Cramer minor. Derived from the
-unconditional `scaledCoeffs_lower_eq_det_scaledCoeffMatrix` by casting back
-to `Int` and translating `Matrix.det` to `Matrix.bareiss` via the
-`det_eq` / `bareiss_eq_mathlib_det` cross-bridge. -/
-theorem scaledCoeffs_eq_scaledCoeffMatrix_bareiss_of_no_singular
-    (b : Matrix Int n m) (i j : Fin n) (hji : j.val < i.val)
-    (_h_nonsing :
-      (Matrix.noPivotLoop j.val
-          (Matrix.noPivotInitialState (Matrix.gramMatrix b))).singularStep = none) :
-    GramSchmidt.entry (scaledCoeffs b) i j =
-      Matrix.bareiss (GramSchmidt.scaledCoeffMatrix b i j hji) := by
-  have h_det : GramSchmidt.entry (scaledCoeffs b) i j =
-      Matrix.det (GramSchmidt.scaledCoeffMatrix b i j hji) := by
-    exact_mod_cast scaledCoeffs_lower_eq_det_scaledCoeffMatrix b i j hji
-  rw [h_det]
-  exact ((HexMatrixMathlib.bareiss_eq_mathlib_det
-        (GramSchmidt.scaledCoeffMatrix b i j hji)).trans
-      (HexMatrixMathlib.det_eq (GramSchmidt.scaledCoeffMatrix b i j hji)).symm).symm
-
 /-- Cramer/Bareiss identity: below the diagonal, the integral scaled
 Gram-Schmidt coefficient is exactly the public Bareiss determinant of the
 Cramer minor `scaledCoeffMatrix`. Derived from the unconditional
@@ -1169,24 +1147,6 @@ theorem scaledCoeffs_eq_scaledCoeffMatrix_bareiss
   exact ((HexMatrixMathlib.bareiss_eq_mathlib_det
         (GramSchmidt.scaledCoeffMatrix b i j hji)).trans
       (HexMatrixMathlib.det_eq (GramSchmidt.scaledCoeffMatrix b i j hji)).symm).symm
-
-/-- The fraction-free scaled-coefficient loop computes the Cramer/Bareiss
-integer equal to `d[j+1] * μ[i,j]` below the diagonal. Derived from the
-unconditional `scaledCoeffs_lower_eq_det_scaledCoeffMatrix` and
-`scaledCoeffMatrix_det_eq_gramDet_mul_coeffs`. -/
-private theorem scaledCoeffRows_lower_eq_coeffs
-    (b : Matrix Int n m) (i j : Nat) (hi : i < n) (hj : j < i) :
-    ((getArrayEntry (scaledCoeffRows b) i j : Int) : Rat) =
-      (gramDet b (j + 1) (Nat.succ_le_of_lt (Nat.lt_trans hj hi)) : Rat) *
-        GramSchmidt.entry (coeffs b) ⟨i, hi⟩ ⟨j, Nat.lt_trans hj hi⟩ := by
-  have hjlt : j < n := Nat.lt_trans hj hi
-  have h_array :
-      getArrayEntry (scaledCoeffRows b) i j =
-        GramSchmidt.entry (scaledCoeffs b) ⟨i, hi⟩ ⟨j, hjlt⟩ := by
-    rw [scaledCoeffs_entry_eq_getArrayEntry,
-      getArrayEntry_scaledCoeffRowsSchur_eq b (StepWitness.ofGram b)]
-  rw [h_array, scaledCoeffs_lower_eq_det_scaledCoeffMatrix b ⟨i, hi⟩ ⟨j, hjlt⟩ hj]
-  exact scaledCoeffMatrix_det_eq_gramDet_mul_coeffs b i j hi hj
 
 /-- Below the diagonal, the rational image of the integer scaled
 Gram-Schmidt coefficient factors as `gramDet b (j+1) * coeffs[i,j]`. Derived

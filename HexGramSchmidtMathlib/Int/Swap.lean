@@ -78,6 +78,7 @@ theorem gramSchmidtNormProduct_rowSwap_below
         (Nat.le_of_lt km1.isLt) =
       gramSchmidtNormProduct b km1.val (Nat.le_of_lt km1.isLt) := by
   unfold gramSchmidtNormProduct
+  rw [Fin.foldl_eq_finRange_foldl, Fin.foldl_eq_finRange_foldl]
   apply foldl_mul_congr_simple
   intro j _hj
   have hj_lt_km1 : j.val < km1.val := j.isLt
@@ -672,25 +673,6 @@ theorem scaledCoeffs_diag (b : Matrix Int n m) (i : Nat) (hi : i < n) :
         (GramSchmidt.leadingGramMatrixInt b (i + 1) hk)
     rw [hbareiss_eq]
     exact leadingGramMatrixInt_det_nonneg b (i + 1) hk
-
-/-- Stage-B rational closed form for the diagonal of `scaledCoeffs`,
-packaged with a no-singular hypothesis for the σ-chain singular-cascade
-consumer.
-
-The hypothesis is unused: `scaledCoeffs_diag` already gives the
-unconditional integer identification with `gramDet`, and the singular tail
-slots are exactly the zero values the public `gramDet` returns once a
-leading Gram prefix is singular. -/
-theorem scaledCoeffs_diag_eq_gramDet_of_no_singular
-    (b : Matrix Int n m) (i : Fin n)
-    (_h_nonsing :
-      (Matrix.noPivotLoop i.val
-        (Matrix.noPivotInitialState (Matrix.gramMatrix b))).singularStep = none) :
-    ((GramSchmidt.entry (scaledCoeffs b) i i : Int) : Rat) =
-      ((gramDet b (i + 1) (Nat.lt_iff_add_one_le.mp i.isLt) : Int) : Rat) := by
-  rw [scaledCoeffs_diag b i.val i.isLt]
-  push_cast
-  rfl
 
 /-- The leading executable Gram determinants of a square upper-triangular
 integer matrix with strictly positive diagonal are positive.
