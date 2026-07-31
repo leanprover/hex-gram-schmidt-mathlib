@@ -19,9 +19,8 @@ size-reduce (earlier-row-add) and adjacent-swap row operations. Their
 statements are Hex-local, but their proofs cross the Mathlib boundary by
 composing `HexMatrixMathlib.bareiss_eq_mathlib_det` with
 `HexMatrixMathlib.det_eq.symm` through `gramDet_rowAdd_earlier` and the
-matrix-side `gramDet_adjacentSwap_of_ne` equation respectively, so they
-live in the Mathlib-side layer per [SPEC/Libraries/hex-gram-schmidt.md
-"Proof path governs placement, not just statement"]. The size-reduce
+matrix-side `gramDet_adjacentSwap_of_ne` equation respectively. These
+determinant-correspondence proofs therefore live in the Mathlib bridge. The size-reduce
 theorems are thin wrappers around
 `scaledCoeffs_rowAdd_pivot/lower/other_row/above_pivot` and
 `gramDet_rowAdd_earlier`, which live in `HexGramSchmidtMathlib/Int.lean`.
@@ -31,7 +30,7 @@ namespace Hex
 
 namespace GramSchmidt.Int
 
-/-! ### Size-reduce updates
+/-! # Size-reduce updates
 
 `GramSchmidt.Int.sizeReduce b j k r` is `Matrix.rowAdd b j k (-r)` (definitional),
 so the theorems below specialise the earlier-row-add updates in
@@ -94,7 +93,7 @@ theorem scaledCoeffs_sizeReduce_above_pivot (b : Matrix Int n m) (j k : Fin n)
   rw [sizeReduce]
   exact scaledCoeffs_rowAdd_above_pivot (b := b) (j := j) (k := k) hjk (-r) l hjl hlk
 
-/-! ### Adjacent-swap updates -/
+/-! # Adjacent-swap updates -/
 
 private theorem rowSwap_row_eq_of_ne_int {n' m' : Nat}
     (b : Matrix Int n' m') (i j r : Fin n') (hri : r ≠ i) (hrj : r ≠ j) :
@@ -151,6 +150,7 @@ private theorem leadingGramMatrixInt_rowSwap_outside
     rowSwap_row_eq_of_ne_int b km1 k pn hp_ne_km1 hp_ne_k
   have hq_eq : (Matrix.rowSwap b km1 k)[qn] = b[qn] :=
     rowSwap_row_eq_of_ne_int b km1 k qn hq_ne_km1 hq_ne_k
+  simp only [Hex.Matrix.getElem_rows]
   show (Matrix.principalSubmatrix (Matrix.gramMatrix (Matrix.rowSwap b km1 k)) t ht)[pp][qq] =
        (Matrix.principalSubmatrix (Matrix.gramMatrix b) t ht)[pp][qq]
   simp only [Matrix.getElem_principalSubmatrix]
@@ -159,11 +159,13 @@ private theorem leadingGramMatrixInt_rowSwap_outside
   have hentry_swap :
       (Matrix.gramMatrix (Matrix.rowSwap b km1 k))[pn][qn] =
         ((Matrix.rowSwap b km1 k)[pn]).dotProduct ((Matrix.rowSwap b km1 k)[qn]) := by
-    simp [Matrix.gramMatrix, Matrix.row, Matrix.ofFn]
+    rw [Matrix.getElem_gramMatrix]
+    rfl
   have hentry_b :
       (Matrix.gramMatrix b)[pn][qn] =
         (b[pn]).dotProduct (b[qn]) := by
-    simp [Matrix.gramMatrix, Matrix.row, Matrix.ofFn]
+    rw [Matrix.getElem_gramMatrix]
+    rfl
   rw [hentry_swap, hentry_b, hp_eq, hq_eq]
 
 /-- When the swap indices `km1, k` both lie inside the leading `t`-prefix
@@ -197,23 +199,25 @@ private theorem leadingGramMatrixInt_rowSwap_inside
   let qq : Fin t := ⟨q, hq⟩
   let pn : Fin n := ⟨p, Nat.lt_of_lt_of_le hp ht⟩
   let qn : Fin n := ⟨q, Nat.lt_of_lt_of_le hq ht⟩
+  simp only [Hex.Matrix.getElem_rows]
   change (Matrix.principalSubmatrix (Matrix.gramMatrix (Matrix.rowSwap b km1 k)) t ht)[pp][qq] =
          ((Matrix.rowSwap ((Matrix.rowSwap M km1' k').transpose) km1' k').transpose)[pp][qq]
   have hLHS :
       (Matrix.principalSubmatrix (Matrix.gramMatrix (Matrix.rowSwap b km1 k)) t ht)[pp][qq] =
         ((Matrix.rowSwap b km1 k)[pn]).dotProduct ((Matrix.rowSwap b km1 k)[qn]) := by
-    simp [Matrix.principalSubmatrix, Matrix.gramMatrix, Matrix.row, Matrix.ofFn,
-      pp, qq, pn, qn]
+    simp only [Matrix.getElem_principalSubmatrix, Matrix.getElem_gramMatrix]
+    rfl
   have hM_entry : ∀ (a b' : Fin t),
       M[a][b'] =
         (b[(⟨a.val, Nat.lt_of_lt_of_le a.isLt ht⟩ : Fin n)]).dotProduct
           (b[(⟨b'.val, Nat.lt_of_lt_of_le b'.isLt ht⟩ : Fin n)]) := by
     intro a b'
-    simp [M, Matrix.principalSubmatrix, Matrix.gramMatrix, Matrix.row, Matrix.ofFn]
+    simp only [M, Matrix.getElem_principalSubmatrix, Matrix.getElem_gramMatrix]
+    rfl
   have hRHS_T :
       ((Matrix.rowSwap ((Matrix.rowSwap M km1' k').transpose) km1' k').transpose)[pp][qq] =
         (Matrix.rowSwap ((Matrix.rowSwap M km1' k').transpose) km1' k')[qq][pp] := by
-    simp [Matrix.transpose, Matrix.col]
+    rw [Matrix.getElem_transpose]
   rw [hLHS, hRHS_T]
   rw [Matrix.getElem_rowSwap (M := (Matrix.rowSwap M km1' k').transpose)
     (i := km1') (j := k') (r := qq) (k := pp)]
@@ -229,7 +233,7 @@ private theorem leadingGramMatrixInt_rowSwap_inside
     intro idx
     have hT : (Matrix.rowSwap M km1' k').transpose[idx][pp] =
         (Matrix.rowSwap M km1' k')[pp][idx] := by
-      simp [Matrix.transpose, Matrix.col]
+      rw [Matrix.getElem_transpose]
     rw [hT, Matrix.getElem_rowSwap (M := M) (i := km1') (j := k') (r := pp) (k := idx)]
     by_cases hpk : pp = k'
     · simp [hpk]
@@ -727,7 +731,7 @@ theorem adjacentSwap_gramDetNumerator_dvd (b : Matrix Int n m)
   exact ⟨((gramDet (Matrix.rowSwap b km1 k) k.val (Nat.le_of_lt k.isLt) : Nat) : Int),
     Int.mul_comm _ _⟩
 
-/-! ### Adjacent-swap scaled-coefficient identity for rows above the pivot
+/-! # Adjacent-swap scaled-coefficient identity for rows above the pivot
 
 For `i > k`, after swapping adjacent rows `km1, k` (with `km1.val + 1 = k.val`),
 the executable Bareiss determinant of the scaled-coefficient Cramer minor
@@ -949,7 +953,7 @@ theorem bareiss_scaledCoeffMatrix_rowSwap_above_prev
   rw [hnu'_rat, hdk_rat, hdkm1_rat, hnuik_rat, hnuikm1_rat, hB_rat]
   ring
 
-/-! ### Adjacent-swap scaled-coefficient identity for the swapped `curr` column
+/-! # Adjacent-swap scaled-coefficient identity for the swapped `curr` column
 
 For `i > k`, after swapping adjacent rows `km1, k`, the executable Bareiss
 determinant of the scaled-coefficient Cramer minor
@@ -1163,7 +1167,7 @@ theorem bareiss_scaledCoeffMatrix_rowSwap_above_curr
   rw [hnu'_rat, hdk_rat, hdkp1_rat, hB_rat, hnuik_rat, hnuikm1_rat]
   linear_combination (G * Nkm1) * hkey
 
-/-! ### Adjacent-swap scaled-coefficient quotient formulas for rows above the pivot
+/-! # Adjacent-swap scaled-coefficient quotient formulas for rows above the pivot
 
 For `i > k`, after the adjacent swap of rows `km1, k`, the new scaled
 coefficients at the `km1` and `k` columns are integer quotients of the
