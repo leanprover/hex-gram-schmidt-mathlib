@@ -9,12 +9,12 @@ leanOptions = [
 [[require]]
 name = "HexBareissMathlib"
 git = "https://github.com/leanprover/hex-bareiss-mathlib.git"
-rev = "v0.8.0"
+rev = "v0.9.0"
 
 [[require]]
 name = "HexGramSchmidt"
 git = "https://github.com/leanprover/hex-gram-schmidt.git"
-rev = "v0.8.0"
+rev = "v0.9.0"
 
 [[require]]
 name = "mathlib"
